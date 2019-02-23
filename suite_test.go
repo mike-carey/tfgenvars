@@ -1,4 +1,4 @@
-package main_test
+package tfgenvars_test
 
 import (
 	"os"
@@ -10,7 +10,7 @@ import (
 
 	"github.com/onsi/gomega/gbytes"
 
-	. "github.com/mcarey-solstice/tfgenvars"
+	. "github.com/mike-carey/tfgenvars"
 )
 
 func TestTfgenvars(t *testing.T) {

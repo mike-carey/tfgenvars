@@ -1,4 +1,4 @@
-package main_test
+package tfgenvars_test
 
 import (
 	"fmt"
@@ -6,7 +6,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	. "github.com/mcarey-solstice/tfgenvars"
+	. "github.com/mike-carey/tfgenvars"
 )
 
 var _ = Describe("tfgenvars", func() {
@@ -80,5 +80,25 @@ var _ = Describe("tfgenvars", func() {
 				Expect(matches).To(Equal([]string{variable_block, variable_block}))
 			})
 		})
+	})
+
+	Describe("Edge cases", func() {
+		It("Should not pick up a resource named variable", func() {
+			var resource_block = `
+resource "variable" "foo" {
+  value = "bar"
+}`
+			matches := CollectVariablesFromText(resource_block)
+			Expect(matches).To(Equal([]string{}))
+		 })
+
+		 It("Should not pick up a commented out variable", func() {
+			 var comment_block = `
+// variable "foo" {}
+}`
+		      matches := CollectVariablesFromText(comment_block)
+		      Expect(matches).To(Equal([]string{}))
+		 })
+
 	})
 })

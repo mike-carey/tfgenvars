@@ -1,4 +1,4 @@
-package main
+package tfgenvars
 
 import (
 	"io"
@@ -6,7 +6,7 @@ import (
 	"regexp"
 )
 
-const VARIABLE_DECLARATION = "variable\\s+\"\\w+\"\\s+{"
+const VARIABLE_DECLARATION = "(?m)^variable\\s+\"\\w+\"\\s+{"
 
 func CollectVariablesFromFile(filename string) []string {
 	s, e := ioutil.ReadFile(filename)
