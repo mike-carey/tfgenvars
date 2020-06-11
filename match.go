@@ -6,48 +6,79 @@ import (
 	"regexp"
 )
 
-const VARIABLE_DECLARATION = "(?m)^variable\\s+\"\\w+\"\\s+{"
+const (
+	OutputDeclaration = "(?m)^output\\s+\"(\\w+)\"\\s+{"
+	VariableDeclaration = "(?m)^variable\\s+\"(\\w+)\"\\s+{"
+)
 
-func CollectVariablesFromFile(filename string) []string {
+type Collector interface {
+	CollectFromFile(filename string) map[string]string
+	CollectFromText(text string) map[string]string
+}
+
+type CollectorImpl struct {
+	regex *regexp.Regexp
+}
+
+func NewCollector(regex string) Collector {
+	return &CollectorImpl{
+		regex: regexp.MustCompile(regex),
+	}
+}
+
+func (c *CollectorImpl) CollectFromFile(filename string) map[string]string {
 	s, e := ioutil.ReadFile(filename)
 	if e != nil {
 		panic(e)
 	}
 
-	return CollectVariablesFromText(string(s))
+	return c.CollectFromText(string(s))
 }
 
-func CollectVariablesFromText(text string) []string {
+func (c *CollectorImpl) CollectFromText(text string) map[string]string {
 	buffer := NewBufferFromText(text)
 
-	regex := regexp.MustCompile(VARIABLE_DECLARATION)
-	indices := regex.FindAllStringIndex(text, -1)
+	indices := c.regex.FindAllSubmatchIndex([]byte(text), -1)
 
-	pos := []int{}
+	pos := make(map[string]int, 0)
 	for _, i := range indices {
-		pos = append(pos, i[0])
+		// Indices: {
+		//   0: first position found by regex,
+		//   1: end position found by regex,
+		//   2: first position of submatch,
+		//   3: end position of submatch
+		// }
+		pos[text[i[2]:i[3]]] = i[1] - 1
 	}
 
-	vars := CollectVariables(buffer, pos)
+	// ps := make(positions, len(pos))
+	// for key, index := range pos {
+	// 	ps = append(ps, position{Key: key, Position: index,})
+	// }
+	// ps.Sort()
+	// pos = ps.Map()
+
+	vars := c.collect(buffer, pos)
 
 	return vars
 }
 
-func CollectVariables(buffer *Buffer, positions []int) []string {
-	vars := []string{}
-	for _, i := range positions {
+func (c *CollectorImpl) collect(buffer *Buffer, positions map[string]int) map[string]string {
+	vars := make(map[string]string, len(positions))
+	for key, i := range positions {
+		logf("Moving to position: %d", i)
 		_, e := buffer.MoveTo(i)
 		if e != nil {
 			panic(e)
 		}
 
-		vars = append(vars, CollectVariableBlock(buffer))
+		vars[key] = c.collectBlock(buffer)
 	}
 
 	return vars
 }
 
-func CollectVariableBlock(buffer *Buffer) string {
+func (c *CollectorImpl) collectBlock(buffer *Buffer) string {
 	str := ""
 	v := 0
 	b := false

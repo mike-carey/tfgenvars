@@ -17,9 +17,16 @@ func main() {
 
 
 func Run(stdin io.Reader, stdout io.Writer, args []string) error {
-	files := []string{}
+	var files []string
 
-	msg := []string{}
+	// var vars map[string]string
+	// var outs map[string]string
+
+	var msg []string
+
+	variableCollector := NewCollector(VariableDeclaration)
+	outputCollector := NewCollector(OutputDeclaration)
+
 	if len(args) == 0 {
 		text := ""
 		scanner := bufio.NewScanner(stdin)
@@ -30,7 +37,15 @@ func Run(stdin io.Reader, stdout io.Writer, args []string) error {
 			return err
 		}
 
-		msg = CollectVariablesFromText(text)
+		vars := variableCollector.CollectFromText(text)
+		outs := outputCollector.CollectFromText(text)
+
+		for k, v := range vars {
+			msg = append(msg, fmt.Sprintf("variable \"%s\" %s", k, v))
+		}
+		for k, v := range outs {
+			msg = append(msg, fmt.Sprintf("variable \"%s\" %s", k, v))
+		}
 	} else {
 		for _, arg := range args {
 			matches, err := filepath.Glob(arg)
@@ -43,11 +58,25 @@ func Run(stdin io.Reader, stdout io.Writer, args []string) error {
 			}
 		}
 
-		messages := make(chan []string)
+		varCh := make(chan map[string]string)
+		outCh := make(chan map[string]string)
 		for _, file := range files {
-			go func() { messages <- CollectVariablesFromFile(file) }()
+			go func() { varCh <- variableCollector.CollectFromFile(file) }()
+			go func() { outCh <- outputCollector.CollectFromFile(file) }()
 		}
-		msg = <- messages
+
+		for i := 0; i < len(files) * 2; i++ {
+			select {
+			case vc := <- varCh:
+				for k, v := range vc {
+					msg = append(msg, fmt.Sprintf("variable \"%s\" %s", k, v))
+				}
+			case oc := <-outCh:
+				for k, v := range oc {
+					msg = append(msg, fmt.Sprintf("variable \"%s\" %s", k, v))
+				}
+			}
+		}
 	}
 
 	for _, m := range msg {
