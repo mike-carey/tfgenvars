@@ -3,18 +3,9 @@ package tfgenvars
 import (
 	"bufio"
 	"fmt"
-	"os"
 	"io"
 	"path/filepath"
 )
-
-func main() {
-	err := Run(os.Stdin, os.Stdout, os.Args[1:])
-	if err != nil {
-		panic(err)
-	}
-}
-
 
 func Run(stdin io.Reader, stdout io.Writer, args []string) error {
 	files := []string{}
@@ -47,7 +38,7 @@ func Run(stdin io.Reader, stdout io.Writer, args []string) error {
 		for _, file := range files {
 			go func() { messages <- CollectVariablesFromFile(file) }()
 		}
-		msg = <- messages
+		msg = <-messages
 	}
 
 	for _, m := range msg {
